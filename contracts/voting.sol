@@ -38,7 +38,8 @@ contract VotingContract{
 
     event contesterAdded(
         string name,
-        string ward
+        string ward,
+        uint vote_count
     );
 
 
@@ -59,8 +60,8 @@ contract VotingContract{
                 _contestant.vote_count = 0;
                 IndividualContestant[_name] = _contestant;
                 ContestantList.push(_name);
-                
-                } else if (ContestantList.length > total_Acceptable_con){
+                emit contesterAdded(_contestant.name, _contestant.ward, _contestant.vote_count);
+                } else if (ContestantList.length >= total_Acceptable_con){
                     revert("Max Candidate Reached");
                 }
 
@@ -88,30 +89,32 @@ contract VotingContract{
 
     }
     /** Function to cast vote for contest, checks to make sure users dont vote twice */
-    function CastVote(string memory _name) public returns(address) {
+    function CastVote(string memory _name) public {
         // require(block.timestamp >= createdTime + 30);
-        voters memory _current_voter = IndividualVoter[msg.sender];
-        return _current_voter.user_address;
-        // if (_current_voter.voted == true){
-        //     revert("You Already Voted");
-        // } else if(_current_voter.voted != true){
-        //     Contestant memory Voter_contestant = IndividualContestant[_name];
-        //     Voter_contestant.vote_count +=1 ;
-        //     _current_voter.voted = true;
-        //     emit EmitInvidualContestant(Voter_contestant.name, Voter_contestant.ward, Voter_contestant.vote_count);
-        // }
-        
+        voters storage _current_voter = IndividualVoter[msg.sender];
+        if (_current_voter.voted == true){
+            revert("You Already Voted");
+        } else if(_current_voter.voted != true){
+            Contestant storage Voter_contestant = IndividualContestant[_name];
+            Voter_contestant.vote_count +=1;
+            _current_voter.voted = true;
+            emit EmitInvidualContestant(Voter_contestant.name, Voter_contestant.ward, Voter_contestant.vote_count);
+        }
 
     }
 
     function announceWinner() public view returns(string memory, string memory, uint){
         uint WinnerCount = 0;
+        string memory winner_name;
         for(uint i =0; i<ContestantList.length; i++) {
             Contestant memory winner =  IndividualContestant[ ContestantList[i] ];
-            if( winner.vote_count >= WinnerCount){
-                return (winner.name, winner.ward, winner.vote_count);
+            if( winner.vote_count > WinnerCount){
+                WinnerCount = winner.vote_count;
+                winner_name = winner.name;
             }
     }
+    
+        return(IndividualContestant[winner_name].name, IndividualContestant[winner_name].ward, IndividualContestant[winner_name].vote_count);
 
 }
 }
